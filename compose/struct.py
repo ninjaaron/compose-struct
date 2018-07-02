@@ -279,5 +279,3 @@ def struct(cls):
         setattr(cls, k, v)
     compose(cls, providers)
     return cls
-
-
