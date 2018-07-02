@@ -9,6 +9,6 @@ setup(name=package,
       version=version,
       description="yet another namedtuple alternative",
       long_description=long_description,
-      url='https://github.com/ninjaaron/compose',
+      url='https://github.com/ninjaaron/compose-struct',
       packages=['compose'],
       python_requires='>=3.5')
