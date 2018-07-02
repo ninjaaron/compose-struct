@@ -134,7 +134,7 @@ def add_attr(template, attr):
 def _decifer_callables(cls):
     for k, v in cls.__dict__.items():
         if callable(v):
-            yield v
+            yield k, v
 
 
 def _unpackcls(cls):
@@ -148,12 +148,13 @@ def _unpack(arg):
         yield from _unpackcls(arg)
     else:
         try:
-            yield from interfaces[arg]
+            yield from ((name, None) for name in interfaces[arg])
         except KeyError:
-            yield arg
+            yield arg, None
 
 
 class Provider:
+    """This class exists only so I can can type-check for it!"""
     __slots__ = 'args', 'default'
 
     def __init__(self, *args, default=empty):
@@ -182,15 +183,11 @@ def mkclass(vals):
     return ns[vals['name']]
 
 
-def getmethod(attr, name_or_func):
+def getmethod(attr, name, func=None):
     try:
-        try:
-            name = name_or_func.__name__
-        except AttributeError:
-            name = name_or_func
         code = add_attr(templates[name], attr)
     except KeyError:
-        name, code = mkmethod(attr, name_or_func)
+        name, code = mkmethod(attr, name)
         print(code)
 
     ns = {}
@@ -204,13 +201,9 @@ def getmethod(attr, name_or_func):
 
 def compose(cls, providers):
     for attr, provider in providers:
-        for meth in provider:
-            try:
-                name = meth.__name__
-            except AttributeError:
-                name = meth
+        for name, meth in provider:
             if not hasattr(cls, name):
-                setattr(cls, name, getmethod(attr, meth))
+                setattr(cls, name, getmethod(attr, name))
 
 
 def sort_types(dct):

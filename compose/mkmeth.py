@@ -29,10 +29,10 @@ def mkmethod(attr, name_or_func, sig='(self, *args, **kwargs)',
              ret='return ', args=True):
     if callable(name_or_func):
         name = name_or_func.__name__
-        # try:
-        #     sig = inspect.signature(name_or_func)
-        # except ValueError:
-        #     pass
+        try:
+            sig = inspect.signature(name_or_func)
+        except ValueError:
+            pass
     else:
         name = name_or_func
 
