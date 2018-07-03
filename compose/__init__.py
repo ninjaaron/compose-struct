@@ -1,1 +1,1 @@
-from .struct import struct, Provider
+from .structs import struct, Provider

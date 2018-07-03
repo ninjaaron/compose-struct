@@ -2,10 +2,10 @@ compose
 =======
 yet another namedtuple alternative for Python
 
-``compose.struct`` is something like an alternative to attr.s_ and the
-namedtuple and now dataclasses_ in Python 3.7
+``compose.struct`` is something like an alternative to namedtuple
+attrs_ and now dataclasses_ in Python 3.7.
 
-.. _attr.s: https://github.com/python-attrs/attrs
+.. _attrs: https://github.com/python-attrs/attrs
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
 
 to create a new struct, you simply:
@@ -28,23 +28,24 @@ This generate a class like this:
           self.bar = bar
           self.baz = spam
 
-You can, naturally implement any other methods you wish.
+You can, naturally, implement any other methods you wish.
 
-How's this different from attr.s_ and dataclasses_? A few ways. Aside
+How's this different from attrs_ and dataclasses_? A few ways. Aside
 from the use of ellipsis to create positional parameters, another that
 can be seen here is that everything is based on ``__slots__``, which
 means your attribute lookup will be faster and your instances more
-compact in ram. The alternatives allow you to use slots, but ``struct``
+compact in memory. attrs_ allows you to use slots, but ``struct``
 defaults to using slots. This means that attributes cannot be
-dynamically created. If a class needs private attributes, you may define
-additional slots with the usual method of defining ``__slots__`` inside
-the class body.
+dynamically created. If a class needs private attributes, you may
+define additional slots with the usual method of defining
+``__slots__`` inside the class body.
 
 Another important distinction is ``compose.struct`` doesn't define a
 bunch of random dunder methods. You get your ``__init__`` method and
-your ``__repr__`` and that's it. However, it is still easy to get more
-dunder methods, as you will see in the following section.
-
+your ``__repr__`` and that's it. It is the opinion of the author that
+sticking all attributes in a tuple and comparing them usually is *not*
+what you want when defining a new type. However, it is still easy to get
+more dunder methods, as you will see in the following section.
 
 Interfaces
 ----------
@@ -82,8 +83,8 @@ below in the `Pre-Defined Interfaces`_ section.
 
 Going even deeper, interfaces can be specified as classes. Wrapper
 methods will be created for any method attached to a class which is
-given as an argument to Provides. The following code is essentially
-equivalent to subclassing ``collections.UserDict``, but no inheritance
+given as an argument to Provides. The following code is more or less
+equivalent to subclassing ``collections.UserList``, but no inheritance
 is used.
 
 .. code:: Python
@@ -96,9 +97,16 @@ is used.
       self.metadata = None
 
 An instances of this class tested with ``isinstance(instance,
-abc.MutableSequence)`` will return ``True`` because wrapper methods have
-been generated on ``self.data`` for all the methods
-``abc.MutableSequence``.
+abc.MutableSequence)`` will return ``True`` because wrapper methods
+have been generated on ``self.data`` for all the methods
+``abc.MutableSequence``. Note that ``abc.MutableSequence`` does not
+actually provide all of the methods a real list does. If you want ALL
+of them, you can use ``Provides(list)``.
+
+Note that you cannot implicitly make pass-through methods for
+``__setattr__`` and ``__getattribute__``, since they have some rather
+strange behaviors. You can, however, pass them explicitly to
+``Provider`` to force the issue.
 
 All methods defined with a provider can be overridden in the body of the
 class as desired. Methods can also be overridden by other providers.
