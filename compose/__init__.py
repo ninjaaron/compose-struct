@@ -1,1 +1,1 @@
-from .structs import struct, Provider
+from .structs import struct, Provider, Inheritance, Frozen

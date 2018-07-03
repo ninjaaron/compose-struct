@@ -106,13 +106,19 @@ of them, you can use ``Provides(list)``.
 Note that you cannot implicitly make pass-through methods for
 ``__setattr__`` and ``__getattribute__``, since they have some rather
 strange behaviors. You can, however, pass them explicitly to
-``Provider`` to force the issue.
+``Provider`` to force the issue. In the case of ``__setattr__``, This
+invokes special behavior. See `__setattr__ hacks`_ for
+details.
 
 All methods defined with a provider can be overridden in the body of the
 class as desired. Methods can also be overridden by other providers.
 It's first-come, first-serve in that case. The Provider you want to
-define the methods has to be placed _above_ any other Interfaces that
+define the methods has to be placed *above* any other interfaces that
 implement the same method.
+
+You can use ``@struct(frozen=True)`` to make your class more-or-less
+immutable after it initializes. It will raise an exception if you try
+to change it using the normal means.
 
 If you need a ``struct`` to look like a child of another class, I
 suggest using the abc_ module to define abstract classes. This allows
@@ -128,6 +134,13 @@ annotations have not been implemented. ``*args``
 and ``**kwargs`` haven't been implemented either. Both of those things
 are planned. args/kwargs have a higher priority and should be available
 soon.
+
+Also be aware that this library uses code generation at class-creation
+time. The intent is to optimize performance of instances at the cost
+of slowing class creation. If you're dynamically creating huge numbers
+of classes, using ``compose.struct`` might be a bad idea. FYI,
+``namedtuple`` does the same. I haven't looke at the source for attrs_
+too much, but I did see some strings with sourcecode there as well.
 
 Pre-Defined Interfaces
 ----------------------
@@ -170,3 +183,38 @@ an attribute with the ``Provides()`` constructor.
   }
   interfaces = {k: ['__%s__' % n for n in v.split()]
                 for k, v in interfaces.items()}
+
+__setattr__ hacks
+-----------------
+ If you choose to create an attribute
+wrapper for ``__setattr__``, the default will look like this so you
+won't hit a recursion error while accessing pre-defined attributes:
+
+.. code:: Python
+
+    def __setattr__(self, attribute, value):
+        if attr in self.__slots__:
+            object.__setattr__(self, attribute, value)
+        else:
+            setattr(self.{wrapped_attribute}, attribute, value)
+
+If you want to override ``__setattr__`` with a more, eh, "exotic"
+method, you may want to build your struct with the ``escape_setattr``
+argument.
+
+.. code:: Python
+
+    @struct(escape_setattr=True)
+    class Foo:
+         bar = ...
+         baz = ...
+
+     def __setattr__(self, attribute, value):
+          setattr(self.bar, attribute, value)
+
+This allows attributes to be set when the object is initialized, but
+will use your method at all other times, *including in other methods,
+which may break your stuff*. Definiting a ``__setattr__`` method like
+this together with the default ``__getattr__`` wrapper will cause a
+recursion error durring initialization of you don't use
+``escape_setattr``.

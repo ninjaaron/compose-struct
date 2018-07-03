@@ -24,6 +24,7 @@ I leave it to potential users to decide whether this is good or bad. It
 certainly is flexible. Raymond Hettinger, Armin Ronacher and the PyPy
 guys all did it. What could go wrong?
 """
+import functools
 import inspect
 from . import empty
 from .mkmeth import mkmethod
@@ -84,7 +85,11 @@ def get_templates():
         def __setitem__(self, index, value): self.attr[index] = value
         def __delitem__(self, index): del self.attr[index]
         def __getattr__(self, attr): return getattr(self.attr, attr)
-        def __setattr__(self, attr, value): setattr(self.attr, attr, value)
+        def __setattr__(self, attr, value):
+            if attr in self.__slots__:
+                object.__setattr__(self, attr, value)
+            else:
+                setattr(self.attr, attr, value)
         def __get__(self): return self.attr
         def __set__(self, val): self.attr = val
         def __add__(self, other): return self.attr + other
@@ -201,7 +206,7 @@ def getmethod(attr, name, func=None):
 def compose(cls, providers):
     for attr, provider in providers:
         for name, meth in provider:
-            if not hasattr(cls, name):
+            if not hasattr(cls, name) or name in NO_INHERIT:
                 setattr(cls, name, getmethod(attr, name))
 
 
@@ -231,7 +236,18 @@ def sort_types(dct):
     return __slots__, args, kwargs, callables, providers
 
 
-def struct(cls):
+class Frozen(Exception):
+    pass
+
+
+def frozen_setattr(self, attr, value):
+    raise Frozen(self.__class__.__name__ + ' type is immutable... -ish.')
+
+
+def struct(cls=None, escape_setattr=False, frozen=False):
+    if not cls:
+        return functools.partial(
+            struct, escape_setattr=escape_setattr, frozen=frozen)
     # get some interesting data
     dct = cls.__dict__
     name = cls.__name__
@@ -252,7 +268,11 @@ def struct(cls):
             if kwargs else '')
     }
     args.extend(kw[0] for kw in kwargs)
-    vals['init_body'] = NL.join('self.{0} = {0}'.format(a)
+    if escape_setattr or frozen:
+        temp = 'object.__setattr__(self, {0!r}, {0})'
+    else:
+        temp = 'self.{0} = {0}'
+    vals['init_body'] = NL.join(temp.format(a)
                                 for a in args)
     if '_init' in callables:
         vals['init_body'] += NL + 'self._init()'
@@ -269,5 +289,7 @@ def struct(cls):
     cls.__doc__ = doc
     for k, v in callables.items():
         setattr(cls, k, v)
+    if frozen:
+        cls.__setattr__ = frozen_setattr
     compose(cls, providers)
     return cls
