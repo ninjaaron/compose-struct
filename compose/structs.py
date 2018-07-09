@@ -38,7 +38,7 @@ class {name}:
 NO_INHERIT = ('__getattribute__', '__setattr__')
 
 DEFAULTS = {'__module__', '__qualname__', '__slots__',
-            '__doc__', '__dict__', '__weakref__'}
+            '__doc__', '__dict__', '__weakref__', '__annotations__'}
 INDENT = ' ' * 8
 NL = '\n' + INDENT
 interfaces = {
@@ -228,7 +228,7 @@ def sort_types(dct):
                 args.append(k)
             else:
                 kwargs.append((k, v.default))
-        elif callable(v):
+        elif callable(v) or isinstance(v, (classmethod, property)):
             callables[k] = v
         elif k not in __slots__:
             kwargs.append((k, v))
