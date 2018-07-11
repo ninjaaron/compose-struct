@@ -31,7 +31,7 @@ from .mkmeth import mkmethod
 STRUCT_TEMPLATE = '''\
 class {name}:
     __slots__ = {slots}
-    def __init__(self{args}{kwargs}):
+    def __init__(self{args}{starargs}{kwargs}{starkwargs}):
         {init_body}
 
 '''
@@ -160,21 +160,36 @@ def _unpack(arg):
 
 class Provider:
     """This class exists only so I can can type-check for it!"""
-    __slots__ = 'args', 'default'
+    __slots__ = 'interfaces', 'default', 'args', 'kwargs'
 
-    def __init__(self, *args, default=empty):
-        self.args = args
+    def __init__(self, *interfaces, default=empty):
         self.default = default
+        self.args = False
+        self.kwargs = False
+        ifaces = []
+        for inf in interfaces:
+            if inf is args:
+                self.args = True
+            elif inf is kwargs:
+                self.kwargs = True
+            else:
+                ifaces.append(inf)
+        self.interfaces = ifaces
 
     def __iter__(self):
-        for arg in self.args:
+        for arg in self.interfaces:
             yield from _unpack(arg)
+
+
+args = 1
+kwargs = 2
 
 
 def struct_repr(self):
     name = self.__class__.__name__
     sig = inspect.signature(self.__class__)
-    attributes_str = ('%s=%r' % (n, getattr(self, n)) for n in sig.parameters)
+    attributes_str = ('%s=%r' % (p, getattr(self, k))
+                      for k, p in sig.parameters.items())
     return '%s(%s)' % (name, ', '.join(attributes_str))
 
 
@@ -213,27 +228,39 @@ def compose(cls, providers):
 def sort_types(dct):
     __slots__ = list(dct.get('__slots__') or [])
 
-    args = []
-    kwargs = []
+    args_ = []
+    kwargs_ = []
     callables = {}
     providers = []
+    starargs = None
+    starkwargs = None
     for k, v in dct.items():
         if k in DEFAULTS:
             continue
         elif v is ...:
-            args.append(k)
+            args_.append(k)
         elif isinstance(v, Provider):
             providers.append((k, v))
             if v.default is empty:
-                args.append(k)
+                if v.args:
+                    starargs = k
+                elif v.kwargs:
+                    starkwargs = k
+                else:
+                    args_.append(k)
             else:
-                kwargs.append((k, v.default))
+                kwargs_.append((k, v.default))
+        elif v is args:
+            starargs = k
+        elif v is kwargs:
+            starkwargs = k
         elif callable(v) or isinstance(v, (classmethod, property)):
             callables[k] = v
         elif k not in __slots__:
-            kwargs.append((k, v))
+            kwargs_.append((k, v))
 
-    return __slots__, args, kwargs, callables, providers
+    return (__slots__, args_, kwargs_, starargs,
+            starkwargs, callables, providers)
 
 
 class Frozen(Exception):
@@ -257,17 +284,24 @@ def struct(cls=None, escape_setattr=False, frozen=False):
                           '`provide` function for composition or use an '
                           'register with an abstract base class (see abc '
                           'module.)')
-    __slots__, args, kwargs, callables, providers = sort_types(dct)
+    (__slots__, args, kwargs, starargs,
+     starkwargs, callables, providers) = sort_types(dct)
 
     # build string values to put in the template
     vals = {
         'name': name,
         'args': (', %s' % ', '.join(args)) if args else '',
+        'starargs': (', *%s' % starargs if starargs else ''),
         'kwargs': (
             ', %s' % ', '.join('%s=%r' % (k, v) for k, v in kwargs)
-            if kwargs else '')
+            if kwargs else ''),
+        'starkwargs': (', **%s' % starkwargs if starkwargs else ''),
     }
     args.extend(kw[0] for kw in kwargs)
+    if starargs:
+        args.append(starargs)
+    if starkwargs:
+        args.append(starkwargs)
     if escape_setattr or frozen:
         temp = 'object.__setattr__(self, {0!r}, {0})'
     else:

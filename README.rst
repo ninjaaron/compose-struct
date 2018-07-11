@@ -61,8 +61,8 @@ generate pass-through methods to attributes.
 
   @struct
   class ListWrapper:
-      self.data = Provider('__getitem__', '__iter__')
-      self.metadata = None
+      data = Provider('__getitem__', '__iter__')
+      metadata = None
 
 
 So this will generate pass-through methods for ``__getitem__`` and
@@ -73,8 +73,8 @@ operators can be used as shorthand for adding dunder methods as well.
 
   @struct
   class ListWrapper:
-      self.data = Provider('[]', 'for')
-      self.metadata = None
+      data = Provider('[]', 'for')
+      metadata = None
 
 Here, ``[]`` is shorthand for item access and implements
 ``__getitem__``, ``__setitem__`` and ``__delitem__``. ``for`` implements
@@ -93,8 +93,8 @@ is used.
 
   @struct
   class ListWrapper:
-      self.data = Provider(abc.MutableSequence)
-      self.metadata = None
+      data = Provider(abc.MutableSequence)
+      metadata = None
 
 An instances of this class tested with ``isinstance(instance,
 abc.MutableSequence)`` will return ``True`` because wrapper methods
@@ -127,19 +127,57 @@ without actually using inheritance.
 
 .. _abc: https://docs.python.org/3/library/abc.html
 
+
+``*args`` and ``**kwargs``
+------------------------
+Though it is not especially recommended, it is possible to implement
+``*args`` and ``**kwargs`` for your constructor.
+
+.. code:: Python
+
+  >>> from compose import struct, Provider, args, kwargs
+  >>> @struct
+  ... class Foo:
+  ...     items = args
+  ...     mapping = kwargs
+  ...
+  >>> f = Foo('bar', 'baz', spam='eggs')
+  >>> f
+  Foo(*items=('bar', 'baz'), **mapping={'spam': 'eggs'})
+
+This breaks the principle that the object's repr can be used to
+instantiate an identical instance, but it does at least give the option
+and still makes the internal structure of the class transparent. With
+``Provider`` parameters, simply pass in ``compose.args`` or
+``compose.kwargs`` as arguments the constructor.
+
+.. code:: Python
+
+  >>> @struct
+  ... class MySequence:
+  ...     data = Provider('__getitem__', '__iter__', args)
+  ...
+  >>> s = MySequence('foo', 'bar', 'baz')
+  >>> s
+  MySequence(*data=('foo', 'bar', 'baz'))
+  >>> for i in s:
+  ...     print(i)
+  ...
+  foo
+  bar
+  baz
+
 Caveats
 -------
-This library is still very new. As of this moment, type
-annotations have not been implemented. ``*args``
-and ``**kwargs`` haven't been implemented either. Both of those things
-are planned. args/kwargs have a higher priority and should be available
-soon.
+This library is still very new. As of this moment, type annotations have
+not been implemented. They are planned. You can use type annotations in
+your class body, but they won't have any effect.
 
 Also be aware that this library uses code generation at class-creation
 time. The intent is to optimize performance of instances at the cost
 of slowing class creation. If you're dynamically creating huge numbers
 of classes, using ``compose.struct`` might be a bad idea. FYI,
-``namedtuple`` does the same. I haven't looke at the source for attrs_
+``namedtuple`` does the same. I haven't looked at the source for attrs_
 too much, but I did see some strings with sourcecode there as well.
 
 Pre-Defined Interfaces
