@@ -49,11 +49,11 @@ more dunder methods, as you will see in the following section.
 
 Interfaces
 ----------
-Perhaps the most significant difference our structs and alternatives is
-that we emphasize composition over inheritance. A ``struct`` isn't even
-able to inherit! It's an outrage! What about interfaces!? What about
-polymorphism!? Well, what ``compose`` provides is a simple way to
-generate pass-through methods to attributes.
+Perhaps the most significant difference between our structs and
+alternatives is that we emphasize composition over inheritance. A
+``struct`` isn't even able to inherit! It's an outrage! What about
+interfaces!? What about polymorphism!? Well, what ``compose`` provides
+is a simple way to generate pass-through methods to attributes.
 
 .. code:: Python
 
@@ -83,7 +83,7 @@ below in the `Pre-Defined Interfaces`_ section.
 
 Going even deeper, interfaces can be specified as classes. Wrapper
 methods will be created for any method attached to a class which is
-given as an argument to Provides. The following code is more or less
+given as an argument to ``Provider``. The following code is more or less
 equivalent to subclassing ``collections.UserList``, but no inheritance
 is used.
 
@@ -98,17 +98,17 @@ is used.
 
 An instances of this class tested with ``isinstance(instance,
 abc.MutableSequence)`` will return ``True`` because wrapper methods
-have been generated on ``self.data`` for all the methods
-``abc.MutableSequence``. Note that ``abc.MutableSequence`` does not
+have been generated on ``self.data`` for all the methods in
+``abc.MutableSequence``. *Note that ``abc.MutableSequence`` does not
 actually provide all of the methods a real list does. If you want ALL
-of them, you can use ``Provides(list)``.
+of them, you can use ``Provides(list)``.*
 
-Note that you cannot implicitly make pass-through methods for
-``__setattr__`` and ``__getattribute__``, since they have some rather
-strange behaviors. You can, however, pass them explicitly to
-``Provider`` to force the issue. In the case of ``__setattr__``, This
-invokes special behavior. See `__setattr__ hacks`_ for
-details.
+You cannot implicitly make pass-through methods for ``__setattr__`` and
+``__getattribute__`` by passing in a class that implements them, since
+they have some rather strange behaviors. You can, however, pass them
+explicitly to ``Provider`` to force the issue.  In the case of
+``__setattr__``, This invokes special behavior. See `__setattr__ hacks`_
+for details.
 
 All methods defined with a provider can be overridden in the body of the
 class as desired. Methods can also be overridden by other providers.
@@ -224,7 +224,7 @@ an attribute with the ``Provides()`` constructor.
 
 __setattr__ hacks
 -----------------
- If you choose to create an attribute
+If you choose to create an attribute
 wrapper for ``__setattr__``, the default will look like this so you
 won't hit a recursion error while accessing pre-defined attributes:
 
