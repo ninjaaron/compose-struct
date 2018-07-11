@@ -4,6 +4,10 @@ whitespace = re.compile(r'\s+')
 
 
 def trunc_source(func):
+    """decorator that returns sourcecode of a function or method with any
+    initial indent truncated. When used as a class decorator, it returns a
+    dictionary with the sourcecode of all methods.
+    """
     if isinstance(func, type):
         return {n: trunc_source(m) for n, m
                 in func.__dict__.items() if callable(m)}

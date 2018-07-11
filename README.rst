@@ -116,7 +116,7 @@ It's first-come, first-serve in that case. The Provider you want to
 define the methods has to be placed *above* any other interfaces that
 implement the same method.
 
-You can use ``@struct(frozen=True)`` to make your class more-or-less
+You can use ``@struct(frozen=True)`` to make the instances more-or-less
 immutable after it initializes. It will raise an exception if you try
 to change it using the normal means.
 
