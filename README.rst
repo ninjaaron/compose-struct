@@ -169,16 +169,12 @@ and still makes the internal structure of the class transparent. With
 
 Caveats
 -------
-This library is still very new. As of this moment, type annotations have
-not been implemented. They are planned. You can use type annotations in
-your class body, but they won't have any effect.
-
-Also be aware that this library uses code generation at class-creation
-time. The intent is to optimize performance of instances at the cost
-of slowing class creation. If you're dynamically creating huge numbers
-of classes, using ``compose.struct`` might be a bad idea. FYI,
-``namedtuple`` does the same. I haven't looked at the source for attrs_
-too much, but I did see some strings with sourcecode there as well.
+This library uses code generation at class-creation time. The intent is
+to optimize performance of instances at the cost of slowing class
+creation. If you're dynamically creating huge numbers of classes, using
+``compose.struct`` might be a bad idea. FYI, ``namedtuple`` does the
+same. I haven't looked at the source for attrs_ too much, but I did see
+some strings with sourcecode there as well.
 
 Pre-Defined Interfaces
 ----------------------
