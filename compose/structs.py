@@ -43,6 +43,10 @@ class Frozen(Exception):
     pass
 
 
+class TooManyPuppies(Exception):
+    pass
+
+
 def _decifer_callables(cls):
     try:
         yield from ((name, None) for name in cls.__abstractmethods__)
@@ -67,10 +71,10 @@ class Provider:
     """This class exists only so I can can type-check for it!"""
     __slots__ = 'interfaces', 'default', 'args', 'kwargs'
 
-    def __init__(self, *interfaces, default=empty):
+    def __init__(self, *interfaces, default=empty, args=False, kwargs=False):
         self.default = default
-        self.args = False
-        self.kwargs = False
+        self.args = args
+        self.kwargs = kwargs
         ifaces = []
         for inf in interfaces:
             if inf is args:
@@ -89,7 +93,7 @@ class Provider:
 def struct_repr(self):
     name = self.__class__.__name__
     sig = inspect.signature(self.__class__)
-    attributes_str = ('%s=%r' % (p, getattr(self, k))
+    attributes_str = ('%s=%r' % (p.name, getattr(self, k))
                       for k, p in sig.parameters.items())
     return '%s(%s)' % (name, ', '.join(attributes_str))
 
@@ -130,11 +134,12 @@ def sort_types(dct):
     __slots__ = list(dct.get('__slots__') or [])
 
     args_ = []
-    kwargs_ = []
+    kwargs_ = {}
     callables = {}
     providers = []
     starargs = None
     starkwargs = None
+    annotations = dct.get('__annotations__', {})
     for k, v in dct.items():
         if k in DEFAULTS:
             continue
@@ -147,10 +152,10 @@ def sort_types(dct):
                     starargs = k
                 elif v.kwargs:
                     starkwargs = k
-                else:
+                elif k not in annotations:
                     args_.append(k)
             else:
-                kwargs_.append((k, v.default))
+                kwargs_[k] = v.default
         elif v is args:
             starargs = k
         elif v is kwargs:
@@ -158,7 +163,11 @@ def sort_types(dct):
         elif callable(v) or isinstance(v, (classmethod, property)):
             callables[k] = v
         elif k not in __slots__:
-            kwargs_.append((k, v))
+            kwargs_[k] = v
+
+    if annotations:
+        newargs = [a for a in annotations if a not in kwargs_]
+        args_ = newargs + args_
 
     return (__slots__, args_, kwargs_, starargs,
             starkwargs, callables, providers)
@@ -176,6 +185,7 @@ def struct(cls=None, escape_setattr=False, frozen=False):
     dct = cls.__dict__
     name = cls.__name__
     doc = cls.__doc__
+    annotations = getattr(cls, '__annotations__', None)
     if len(cls.__bases__) > 1 or cls.__base__ != object:
         raise Inheritance('structs are not allowed to inherit. use the '
                           '`provide` function for composition or use an '
@@ -190,11 +200,11 @@ def struct(cls=None, escape_setattr=False, frozen=False):
         'args': (', %s' % ', '.join(args)) if args else '',
         'starargs': (', *%s' % starargs if starargs else ''),
         'kwargs': (
-            ', %s' % ', '.join('%s=%r' % (k, v) for k, v in kwargs)
+            ', %s' % ', '.join('%s=%r' % (k, v) for k, v in kwargs.items())
             if kwargs else ''),
         'starkwargs': (', **%s' % starkwargs if starkwargs else ''),
     }
-    args.extend(kw[0] for kw in kwargs)
+    args.extend(kwargs)
     if starargs:
         args.append(starargs)
     if starkwargs:
@@ -214,6 +224,8 @@ def struct(cls=None, escape_setattr=False, frozen=False):
     cls = mkclass(vals)
 
     # tack on the rest of the attributes.
+    if annotations:
+        cls.__init__.__annotations__ = annotations
     if '__repr__' not in dct:
         cls.__repr__ = struct_repr
     cls.__slots__ = __slots__
