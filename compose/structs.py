@@ -32,8 +32,7 @@ from .templates import add_attr, templates, interfaces, STRUCT_TEMPLATE, NL
 NO_INHERIT = ('__getattribute__', '__setattr__')
 DEFAULTS = {'__module__', '__qualname__', '__slots__',
             '__doc__', '__dict__', '__weakref__', '__annotations__'}
-args = 1
-kwargs = 2
+args, kwargs = 1, 2
 
 
 class Inheritance(Exception):

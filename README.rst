@@ -2,7 +2,7 @@ compose
 =======
 yet another namedtuple alternative for Python
 
-``compose.struct`` is something like an alternative to namedtuple
+``compose.struct`` is something like an alternative to namedtuple,
 attrs_ and now dataclasses_ in Python 3.7.
 
 .. _attrs: https://github.com/python-attrs/attrs
@@ -31,14 +31,14 @@ This generate a class like this:
 You can, naturally, implement any other methods you wish.
 
 How's this different from attrs_ and dataclasses_? A few ways. Aside
-from the use of ellipsis to create positional parameters, another that
-can be seen here is that everything is based on ``__slots__``, which
-means your attribute lookup will be faster and your instances more
-compact in memory. attrs_ allows you to use slots, but ``struct``
-defaults to using slots. This means that attributes cannot be
-dynamically created. If a class needs private attributes, you may
-define additional slots with the usual method of defining
-``__slots__`` inside the class body.
+from the use of ellipsis to create positional parameters, another
+difference that can be seen here is that everything is based on
+``__slots__``, which means your attribute lookup will be faster and your
+instances more compact in memory. attrs_ allows you to use slots, but
+``struct`` defaults to using slots. This means that attributes cannot be
+dynamically created. If a class needs private attributes, you may define
+additional slots with the usual method of defining ``__slots__`` inside
+the class body.
 
 Another important distinction is ``compose.struct`` doesn't define a
 bunch of random dunder methods. You get your ``__init__`` method and
