@@ -26,7 +26,7 @@ This generate a class like this:
 
       def __init__(self, bar, baz='spam'):
           self.bar = bar
-          self.baz = spam
+          self.baz = baz
 
 You can, naturally, implement any other methods you wish.
 
