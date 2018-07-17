@@ -30,6 +30,22 @@ This generate a class like this:
 
 You can, naturally, implement any other methods you wish.
 
+You can also use type annotation syntax for positional arguments:
+
+.. code:: Python
+
+  @compose.struct
+  class Foo:
+      bar: int
+      baz: str = 'spam'
+
+If the ``name = ...`` syntax is used in combination with type annotation
+syntax for positional arguments, all positional arguments with
+annotations will come before positional arguments without. However, this
+should be considered an implementation detail. best practice is to not
+mix the two styles. Use ``typing.Any`` if you are using type
+annotations and don't want one of the arguments to care about type.
+
 How's this different from attrs_ and dataclasses_? A few ways. Aside
 from the use of ellipsis to create positional parameters, another
 difference that can be seen here is that everything is based on

@@ -220,7 +220,7 @@ def struct(cls=None, escape_setattr=False, frozen=False):
     __slots__.extend(args)
     vals['slots'] = __slots__
 
-    # exec the template in its own namespace and get the resulting class
+    # make the new class
     cls = mkclass(vals)
 
     # tack on the rest of the attributes.
