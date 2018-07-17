@@ -145,7 +145,7 @@ without actually using inheritance.
 
 
 ``*args`` and ``**kwargs``
-------------------------
+--------------------------
 Though it is not especially recommended, it is possible to implement
 ``*args`` and ``**kwargs`` for your constructor.
 
