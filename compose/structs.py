@@ -26,13 +26,12 @@ guys all did it. What could go wrong?
 """
 import functools
 import inspect
-from . import empty
+from . import empty, args, kwargs
 from .mkmeth import mkmethod
 from .templates import add_attr, templates, interfaces, STRUCT_TEMPLATE, NL
 NO_INHERIT = ('__getattribute__', '__setattr__')
 DEFAULTS = {'__module__', '__qualname__', '__slots__',
             '__doc__', '__dict__', '__weakref__', '__annotations__'}
-args, kwargs = 1, 2
 
 
 class Inheritance(Exception):
