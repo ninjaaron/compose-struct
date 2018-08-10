@@ -51,7 +51,7 @@ def _decifer_callables(cls):
         yield from ((name, None) for name in cls.__abstractmethods__)
     except AttributeError:
         pass
-    for k, v in cls.__dict__.items():
+    for k, v in vars(cls).items():
         if callable(v) and k not in NO_INHERIT:
             yield k, v
 
