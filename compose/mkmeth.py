@@ -10,7 +10,7 @@ def trunc_source(func):
     """
     if isinstance(func, type):
         return {n: trunc_source(m) for n, m
-                in func.__dict__.items() if callable(m)}
+                in vars(func).items() if callable(m)}
 
     lines = inspect.getsourcelines(func)[0]
     indent = whitespace.match(lines[0])
