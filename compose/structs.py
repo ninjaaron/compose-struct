@@ -42,10 +42,6 @@ class Frozen(Exception):
     pass
 
 
-class TooManyPuppies(Exception):
-    pass
-
-
 def _decifer_callables(cls):
     try:
         yield from ((name, None) for name in cls.__abstractmethods__)
@@ -187,7 +183,7 @@ def struct(cls=None, escape_setattr=False, frozen=False):
     annotations = getattr(cls, '__annotations__', None)
     if len(cls.__bases__) > 1 or cls.__base__ != object:
         raise Inheritance('structs are not allowed to inherit. use the '
-                          '`provide` function for composition or use an '
+                          '`Provider` constructor for composition or '
                           'register with an abstract base class (see abc '
                           'module.)')
     (__slots__, args, kwargs, starargs,

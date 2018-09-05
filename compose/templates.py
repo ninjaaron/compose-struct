@@ -56,9 +56,9 @@ class templates:
     def __delitem__(self, index): del self.attr[index]
     def __getattr__(self, attr): return getattr(self.attr, attr)
     def __setattr__(self, attr, value):
-        if attr in self.__slots__:
+        try:
             object.__setattr__(self, attr, value)
-        else:
+        except AttributeError:
             setattr(self.attr, attr, value)
     def __get__(self): return self.attr
     def __set__(self, val): self.attr = val

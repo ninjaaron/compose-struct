@@ -1,6 +1,6 @@
 compose
 =======
-yet another namedtuple alternative for Python
+Yet another namedtuple alternative for Python
 
 ``compose.struct`` is something like an alternative to namedtuple,
 attrs_ and now dataclasses_ in Python 3.7.
@@ -57,8 +57,8 @@ additional slots with the usual method of defining ``__slots__`` inside
 the class body.
 
 Another important distinction is ``compose.struct`` doesn't define a
-bunch of random dunder methods. You get your ``__init__`` method and
-your ``__repr__`` and that's it. It is the opinion of the author that
+bunch of random dunder methods. You get your ``__init__``, ``__repr__``,
+and ``to_dict`` and that's it. It is the opinion of the author that
 sticking all attributes in a tuple and comparing them usually is *not*
 what you want when defining a new type. However, it is still easy to get
 more dunder methods, as you will see in the following section.
@@ -243,10 +243,10 @@ won't hit a recursion error while accessing pre-defined attributes:
 .. code:: Python
 
     def __setattr__(self, attribute, value):
-        if attr in self.__slots__:
+        try:
             object.__setattr__(self, attribute, value)
-        else:
-            setattr(self.{wrapped_attribute}, attribute, value)
+        except AttributeError:
+            setattr(self.wrapped_attribute, attribute, value)
 
 If you want to override ``__setattr__`` with a more, eh, "exotic"
 method, you may want to build your struct with the ``escape_setattr``
