@@ -88,9 +88,14 @@ class Provider:
 def struct_repr(self):
     name = self.__class__.__name__
     sig = inspect.signature(self.__class__)
-    attributes_str = ('%s=%r' % (p.name, getattr(self, k))
-                      for k, p in sig.parameters.items())
+    attributes_str = ['%s=%r' % (p.name, getattr(self, k))
+                      for k, p in sig.parameters.items()]
     return '%s(%s)' % (name, ', '.join(attributes_str))
+
+
+def to_dict(self):
+    sig = inspect.signature(self.__class__)
+    return {p.name: getattr(self, k) for k, p in sig.parameters.items()}
 
 
 def mkclass(vals):
@@ -223,6 +228,8 @@ def struct(cls=None, escape_setattr=False, frozen=False):
         cls.__init__.__annotations__ = annotations
     if '__repr__' not in dct:
         cls.__repr__ = struct_repr
+    if 'to_dict' not in dct:
+        cls.to_dict = to_dict
     cls.__slots__ = __slots__
     cls.__doc__ = doc
     for k, v in callables.items():
