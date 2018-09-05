@@ -93,9 +93,16 @@ def struct_repr(self):
     return '%s(%s)' % (name, ', '.join(attributes_str))
 
 
-def to_dict(self):
+def to_dict(self, recursive=False):
     sig = inspect.signature(self.__class__)
-    return {p.name: getattr(self, k) for k, p in sig.parameters.items()}
+    dct = {p.name: getattr(self, k) for k, p in sig.parameters.items()}
+    if recursive:
+        for k, v in dct.items():
+            try:
+                dct[k] = v.to_dict(recursive=True)
+            except AttributeError:
+                pass
+    return dct
 
 
 def mkclass(vals):
