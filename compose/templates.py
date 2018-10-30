@@ -10,7 +10,11 @@ class {name}:
         {init_body}
 
 '''
-INDENT = ' ' * 8
+INIT_TEMPLATE = '''\
+def __init__(self{args}{starargs}{kwargs}{starkwargs}):
+    {init_body}
+'''
+INDENT = ' ' * 4
 NL = '\n' + INDENT
 interfaces = {
     '+': 'add radd',
@@ -65,7 +69,7 @@ class templates:
     def __add__(self, other): return self.attr + other
     def __radd__(self, other): return other + self.attr
     def __iadd__(self, other): self.attr += other
-    def __pos__(self): return +self.attr
+    def __pos__(self): return + self.attr
     def __iter__(self): return iter(self.attr)
 
 

@@ -1,2 +1,2 @@
-from .structs import struct, Provider, Inheritance, Frozen
+from .structs import Struct, Provider, Immutable, Mutability
 from . import args, kwargs

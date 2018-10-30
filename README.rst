@@ -2,7 +2,7 @@ compose
 =======
 Yet another namedtuple alternative for Python
 
-``compose.struct`` is something like an alternative to namedtuple,
+``compose.Struct`` is something like an alternative to namedtuple,
 attrs_ and now dataclasses_ in Python 3.7.
 
 .. _attrs: https://github.com/python-attrs/attrs
@@ -12,12 +12,12 @@ to create a new struct, you simply:
 
 .. code:: Python
 
-  @compose.struct
-  class Foo:
+  
+  class Foo(compose.Struct):
       bar = ...
       baz = 'spam'
 
-This generate a class like this:
+This generates a class like this:
 
 .. code:: Python
 
@@ -34,8 +34,7 @@ You can also use type annotation syntax for positional arguments:
 
 .. code:: Python
 
-  @compose.struct
-  class Foo:
+  class Foo(compose.Struct):
       bar: int
       baz: str = 'spam'
 
@@ -51,32 +50,35 @@ from the use of ellipsis to create positional parameters, another
 difference that can be seen here is that everything is based on
 ``__slots__``, which means your attribute lookup will be faster and your
 instances more compact in memory. attrs_ allows you to use slots, but
-``struct`` defaults to using slots. This means that attributes cannot be
-dynamically created. If a class needs private attributes, you may define
+``struct`` only uses slots. This means that attributes cannot be
+dynamically created. If a class needs private attributes, you may create
 additional slots with the usual method of defining ``__slots__`` inside
 the class body.
 
-Another important distinction is ``compose.struct`` doesn't define a
+Another important distinction is ``compose.Struct`` doesn't define a
 bunch of random dunder methods. You get your ``__init__``, ``__repr__``,
-and ``to_dict`` and that's it. It is the opinion of the author that
+and ``to_dict`` and that's it [#]_. It is the opinion of the author that
 sticking all attributes in a tuple and comparing them usually is *not*
 what you want when defining a new type. However, it is still easy to get
 more dunder methods, as you will see in the following section.
+
+.. [#] OK, It actually also gives you __getstate__ and __setstate__,
+       which are required for pickling objects.
 
 Interfaces
 ----------
 Perhaps the most significant difference between our structs and
 alternatives is that we emphasize composition over inheritance. A
-``struct`` isn't even able to inherit! It's an outrage! What about
-interfaces!? What about polymorphism!? Well, what ``compose`` provides
-is a simple way to generate pass-through methods to attributes.
+``struct`` isn't even able to inherit in the normal way! It's an
+outrage! What about interfaces!? What about polymorphism!? Well, what
+``compose`` provides is a simple way to generate pass-through methods to
+attributes.
 
 .. code:: Python
 
-  from compose import struct, Provider
+  from compose import Struct, Provider
 
-  @struct
-  class ListWrapper:
+  class ListWrapper(Struct):
       data = Provider('__getitem__', '__iter__')
       metadata = None
 
@@ -107,8 +109,7 @@ is used.
 
   from collections import abc
 
-  @struct
-  class ListWrapper:
+  class ListWrapper(Struct):
       data = Provider(abc.MutableSequence)
       metadata = None
 
@@ -132,9 +133,50 @@ It's first-come, first-serve in that case. The Provider you want to
 define the methods has to be placed *above* any other interfaces that
 implement the same method.
 
-You can use ``@struct(frozen=True)`` to make the instances more-or-less
-immutable after it initializes. It will raise an exception if you try
-to change it using the normal means.
+Mix-in Classes vs. Inheritance
+------------------------------
+There is no inheritance with Structs. Because of metaclass magic, a
+class that inherits from Struct is not its child. It is always a child
+of ``object``. ``Provider`` is a way to implement pass-through methods
+easily. Mix-in classes bind methods from other classes directly to your
+class. It doesn't go through the class hierarchy and rebind everything,
+only methods defined directly on the mix-in class. Inheriting from
+normal python classes may have unpredictable results.
+
+``compose`` provides one mix-in class: ``Immutable``, which is
+implemented like this:
+
+.. code:: Python
+
+  class Mutablility(Exception):
+      pass
+
+
+  class Immutable:
+      def __setattr__(self, attr, value):
+          raise Mutablility(
+              "can't set {0}.{1}. type {0} is immutable.".format(
+                  self.__class__.__name__,
+                  attr,
+                  value
+              ))
+
+It can be used like this:
+
+.. code:: Python
+
+  from compose import Struct, Immutable
+
+
+  class Foo(Struct, Immutable):
+      bar = ...
+      baz = ...
+
+When an instance of ``Foo`` is created, it will not be possible to set
+attributes afterwards in the normal way. (Though it is technically
+possible if you set it with ``object.__setattr__(instance, 'attr',
+value)``). Attempting to do ``foo.bar = 7`` will raise a ``Mutability``
+error.
 
 If you need a ``struct`` to look like a child of another class, I
 suggest using the abc_ module to define abstract classes. This allows
@@ -143,6 +185,18 @@ without actually using inheritance.
 
 .. _abc: https://docs.python.org/3/library/abc.html
 
+Order
+~~~~~
+This is the order of priority for where methods come from:
+
+- Struct generates a unique ``__init__`` method for each class it
+  creates. This cannot be overriden. Alternative constructors should be
+  implemented as class methods.
+- methods defined in the body of the struct get next dibs.
+- any attributes defined on your mix-ins will be defined on the class if
+  they don't already exist.
+- Only then are ``Provider`` attributes allowed to add any methods which
+  haven't yet been defined.
 
 ``*args`` and ``**kwargs``
 --------------------------
@@ -151,9 +205,8 @@ Though it is not especially recommended, it is possible to implement
 
 .. code:: Python
 
-  >>> from compose import struct, Provider, args, kwargs
-  >>> @struct
-  ... class Foo:
+  >>> from compose import Struct, args, kwargs
+  >>> class Foo(Struct):
   ...     items = args
   ...     mapping = kwargs
   ...
@@ -169,8 +222,7 @@ and still makes the internal structure of the class transparent. With
 
 .. code:: Python
 
-  >>> @struct
-  ... class MySequence:
+  >>> class MySequence(Struct):
   ...     data = Provider('__getitem__', '__iter__', args)
   ...
   >>> s = MySequence('foo', 'bar', 'baz')
@@ -188,7 +240,7 @@ Caveats
 This library uses code generation at class-creation time. The intent is
 to optimize performance of instances at the cost of slowing class
 creation. If you're dynamically creating huge numbers of classes, using
-``compose.struct`` might be a bad idea. FYI, ``namedtuple`` does the
+``compose.Struct`` might be a bad idea. FYI, ``namedtuple`` does the
 same. I haven't looked at the source for attrs_ too much, but I did see
 some strings with sourcecode there as well.
 
@@ -249,22 +301,6 @@ won't hit a recursion error while accessing pre-defined attributes:
             setattr(self.wrapped_attribute, attribute, value)
 
 If you want to override ``__setattr__`` with a more, eh, "exotic"
-method, you may want to build your struct with the ``escape_setattr``
-argument.
-
-.. code:: Python
-
-    @struct(escape_setattr=True)
-    class Foo:
-         bar = ...
-         baz = ...
-
-     def __setattr__(self, attribute, value):
-          setattr(self.bar, attribute, value)
-
-This allows attributes to be set when the object is initialized, but
-will use your method at all other times, *including in other methods,
-which may break your stuff*. Definiting a ``__setattr__`` method like
-this together with the default ``__getattr__`` wrapper will cause a
-recursion error durring initialization of you don't use
-``escape_setattr``.
+method, the attributes defined in the class body will be set properly
+when the instance is initialized, but will use your method at all other
+times, *including in other methods, which may break your stuff*.

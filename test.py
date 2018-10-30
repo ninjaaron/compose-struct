@@ -1,4 +1,4 @@
-from compose import struct, Provider, mkmeth, args, kwargs
+from compose import Struct, Provider, mkmeth, args, kwargs
 from collections import abc
 import typing as t
 real_mkmeth = mkmeth.mkmethod
@@ -16,15 +16,13 @@ l = ['spam', 'eggs', 'dog', 'cat']
 
 def mkclass(*provides):
 
-    @struct
-    class SomeClass:
+    class SomeClass(Struct):
         data = Provider(*provides)
         metadata = None
 
     return SomeClass
 
-@struct
-class LinkedList:
+class LinkedList(Struct):
     head: t.Any
     tail: 'LinkedList' = None
 

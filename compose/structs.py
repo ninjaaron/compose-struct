@@ -24,22 +24,13 @@ I leave it to potential users to decide whether this is good or bad. It
 certainly is flexible. Raymond Hettinger, Armin Ronacher and the PyPy
 guys all did it. What could go wrong?
 """
-import functools
 import inspect
 from . import empty, args, kwargs
 from .mkmeth import mkmethod
-from .templates import add_attr, templates, interfaces, STRUCT_TEMPLATE, NL
+from .templates import add_attr, templates, interfaces, INIT_TEMPLATE, NL
 NO_INHERIT = ('__getattribute__', '__setattr__')
 DEFAULTS = {'__module__', '__qualname__', '__slots__',
             '__doc__', '__dict__', '__weakref__', '__annotations__'}
-
-
-class Inheritance(Exception):
-    pass
-
-
-class Frozen(Exception):
-    pass
 
 
 def _decifer_callables(cls):
@@ -85,36 +76,6 @@ class Provider:
             yield from _unpack(arg)
 
 
-def struct_repr(self):
-    name = self.__class__.__name__
-    sig = inspect.signature(self.__class__)
-    attributes_str = ['%s=%r' % (p.name, getattr(self, k))
-                      for k, p in sig.parameters.items()]
-    return '%s(%s)' % (name, ', '.join(attributes_str))
-
-
-def to_dict(self, recursive=False):
-    sig = inspect.signature(self.__class__)
-    dct = {p.name: getattr(self, k) for k, p in sig.parameters.items()}
-    if recursive:
-        for k, v in dct.items():
-            try:
-                dct[k] = v.to_dict(recursive=True)
-            except AttributeError:
-                pass
-    return dct
-
-
-def mkclass(vals):
-    ns = {}
-    try:
-        exec(STRUCT_TEMPLATE.format(**vals), ns)
-    except Exception:
-        print(STRUCT_TEMPLATE.format(**vals))
-        raise
-    return ns[vals['name']]
-
-
 def getmethod(attr, name, func=None):
     try:
         code = add_attr(templates[name], attr)
@@ -138,11 +99,10 @@ def compose(cls, providers):
 
 
 def sort_types(dct):
-    __slots__ = list(dct.get('__slots__') or [])
+    slots = list(dct.get('__slots__') or [])
 
     args_ = []
     kwargs_ = {}
-    callables = {}
     providers = []
     starargs = None
     starkwargs = None
@@ -168,42 +128,19 @@ def sort_types(dct):
         elif v is kwargs:
             starkwargs = k
         elif callable(v) or isinstance(v, (classmethod, property)):
-            callables[k] = v
-        elif k not in __slots__:
+            pass
+        elif k not in slots:
             kwargs_[k] = v
 
     if annotations:
         newargs = [a for a in annotations if a not in kwargs_]
         args_ = newargs + args_
 
-    return (__slots__, args_, kwargs_, starargs,
-            starkwargs, callables, providers)
+    return args_, kwargs_, starargs, starkwargs, providers
 
 
-def frozen_setattr(self, attr, value):
-    raise Frozen(self.__class__.__name__ + ' type is immutable... -ish.')
-
-
-def struct(cls=None, escape_setattr=False, frozen=False):
-    if not cls:
-        return functools.partial(
-            struct, escape_setattr=escape_setattr, frozen=frozen)
-    # get some interesting data
-    dct = cls.__dict__
-    name = cls.__name__
-    doc = cls.__doc__
-    annotations = getattr(cls, '__annotations__', None)
-    if len(cls.__bases__) > 1 or cls.__base__ != object:
-        raise Inheritance('structs are not allowed to inherit. use the '
-                          '`Provider` constructor for composition or '
-                          'register with an abstract base class (see abc '
-                          'module.)')
-    (__slots__, args, kwargs, starargs,
-     starkwargs, callables, providers) = sort_types(dct)
-
-    # build string values to put in the template
+def mkinit(args, kwargs, starargs, starkwargs, dct):
     vals = {
-        'name': name,
         'args': (', %s' % ', '.join(args)) if args else '',
         'starargs': (', *%s' % starargs if starargs else ''),
         'kwargs': (
@@ -216,32 +153,86 @@ def struct(cls=None, escape_setattr=False, frozen=False):
         args.append(starargs)
     if starkwargs:
         args.append(starkwargs)
-    if escape_setattr or frozen:
-        temp = 'object.__setattr__(self, {0!r}, {0})'
-    else:
-        temp = 'self.{0} = {0}'
+    temp = 'object.__setattr__(self, {0!r}, {0})'
     vals['init_body'] = NL.join(temp.format(a)
                                 for a in args)
-    if '_init' in callables:
+
+    if callable(dct.get('_init')):
         vals['init_body'] += NL + 'self._init()'
-    __slots__.extend(args)
-    vals['slots'] = __slots__
+    ns = {}
+    try:
+        exec(INIT_TEMPLATE.format(**vals), ns)
+    except Exception:
+        print(INIT_TEMPLATE.format(**vals))
+        raise
+    try:
+        ns['__init__'].__annotaions__ = dct['__annotaions__']
+    except KeyError:
+        pass
+    return ns['__init__'], args
 
-    # make the new class
-    cls = mkclass(vals)
 
-    # tack on the rest of the attributes.
-    if annotations:
-        cls.__init__.__annotations__ = annotations
-    if '__repr__' not in dct:
-        cls.__repr__ = struct_repr
-    if 'to_dict' not in dct:
-        cls.to_dict = to_dict
-    cls.__slots__ = __slots__
-    cls.__doc__ = doc
-    for k, v in callables.items():
-        setattr(cls, k, v)
-    if frozen:
-        cls.__setattr__ = frozen_setattr
-    compose(cls, providers)
-    return cls
+class StructMeta(type):
+    def __new__(cls, name, bases, dct):
+        if not bases:
+            return super().__new__(cls, name, bases, dct)
+
+        args, kwargs, starargs, starkwargs, providers = sort_types(dct)
+        dct['__slots__'] = list(dct.get('__slots__') or [])
+        dct['__init__'], slots = mkinit(
+            args, kwargs, starargs, starkwargs, dct)
+        dct['__slots__'].extend(slots)
+        methods = (kv for base in bases for kv in vars(base).items())
+        for k, v in methods:
+            if k not in dct:
+                dct[k] = v
+        for k in dct['__slots__']:
+            try:
+                del dct[k]
+            except KeyError:
+                pass
+
+        cls = type(name, (), dct)
+        compose(cls, providers)
+        return cls
+
+
+class Struct(metaclass=StructMeta):
+    def __repr__(self):
+        name = self.__class__.__name__
+        sig = inspect.signature(self.__class__)
+        attributes_str = ['%s=%r' % (p.name, getattr(self, k))
+                          for k, p in sig.parameters.items()]
+        return '%s(%s)' % (name, ', '.join(attributes_str))
+
+    def to_dict(self, recursive=False):
+        sig = inspect.signature(self.__class__)
+        dct = {p.name: getattr(self, k) for k, p in sig.parameters.items()}
+        if recursive:
+            for k, v in dct.items():
+                try:
+                    dct[k] = v.to_dict(recursive=True)
+                except AttributeError:
+                    pass
+        return dct
+
+    def __getstate__(self):
+        return [getattr(self, k) for k in self.__slots__]
+
+    def __setstate__(self, state):
+        for k, v in zip(self.__slots__, state):
+            object.__setattr__(self, k, v)
+
+
+class Mutablility(Exception):
+    pass
+
+
+class Immutable:
+    def __setattr__(self, attr, value):
+        raise Mutablility(
+            "can't set {0}.{1}. type {0} is immutable.".format(
+                self.__class__.__name__,
+                attr,
+                value
+            ))
