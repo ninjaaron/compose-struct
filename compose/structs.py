@@ -224,7 +224,7 @@ class Struct(metaclass=StructMeta):
             object.__setattr__(self, k, v)
 
 
-class Mutablility(Exception):
+class Mutability(Exception):
     pass
 
 

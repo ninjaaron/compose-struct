@@ -1,7 +1,7 @@
 from setuptools import setup
 
 package = 'compose_struct'
-version = '0.7.4'
+version = '0.7.5'
 with open('README.rst') as fh:
     long_description = fh.read()
 
