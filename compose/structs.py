@@ -199,7 +199,7 @@ class StructMeta(type):
 
 class Struct(metaclass=StructMeta):
     def __repr__(self):
-        name = self.__class__.__name__
+        name = self.__class__.__qualname__
         sig = inspect.signature(self.__class__)
         attributes_str = ['%s=%r' % (p.name, getattr(self, k))
                           for k, p in sig.parameters.items()]
@@ -216,6 +216,7 @@ class Struct(metaclass=StructMeta):
                     pass
         return dct
 
+    # for pickling
     def __getstate__(self):
         return [getattr(self, k) for k in self.__slots__]
 
@@ -230,9 +231,8 @@ class Mutability(Exception):
 
 class Immutable:
     def __setattr__(self, attr, value):
-        raise Mutablility(
+        raise Mutability(
             "can't set {0}.{1}. type {0} is immutable.".format(
                 self.__class__.__name__,
                 attr,
-                value
             ))
